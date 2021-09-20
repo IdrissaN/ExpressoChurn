@@ -40,16 +40,18 @@ def train_model(train, test, features, target, n_splits, seed):
         trn_x, trn_y = trn[features], y.iloc[trn_idx]
         val_x, val_y = val[features], y.iloc[val_idx]
 
+        optuna_params = {'iterations': 6718, 'objective': 'CrossEntropy', 
+                        'bootstrap_type': 'Bernoulli', 
+                        'od_wait': 1707, 'learning_rate': 0.024588519860423364, 
+                        'reg_lambda': 93.4261912765013, 'random_strength': 29.233923330805222, 
+                        'depth': 9, 'min_data_in_leaf': 23, 'leaf_estimation_iterations': 13, 
+                        'subsample': 0.8143597084184464,
+                        'eval_metric': 'AUC',
+                        'task_type': 'GPU',
+                        'random_seed': 202109
+                        }
     
-        clf = CatBoostClassifier(
-                        iterations=3000, 
-                        learning_rate=0.05,
-                        depth=8,
-                        bagging_temperature = 3,
-                        eval_metric='AUC',
-                        od_type='Iter',
-                        random_seed=3*seed, 
-                        task_type='GPU')
+        clf = CatBoostClassifier(**optuna_params)
     
         clf.fit(trn_x, trn_y, 
                 eval_set= (val_x, val_y), 
@@ -81,10 +83,7 @@ if __name__=='__main__':
     y = train.CHURN
 
     excluded_feats = ['CHURN', 'user_id', 'REGION', 'TENURE', 'CD_TENURE', 'MRG', 'TOP_PACK']
-    #excluded_feats.extend(cfg.MEAN_FEATS)
-    #excluded_feats.extend(cfg.DIFF_MEAN_FEATS)
     excluded_feats.extend(cfg.DIFF_QRTLS_FEATS)
-    excluded_feats.extend(cfg.LOG_FEATS)
 
     features = [col for col in test.columns if col not in excluded_feats]
     print(f"# features : {len(features)}")
@@ -96,9 +95,4 @@ if __name__=='__main__':
     submission.to_csv(os.path.join(cfg.submissions_path, f"sub_cat_feats{len(features)}_cv{str(score).split('.')[1][:6]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
     oof.to_csv(os.path.join(cfg.submissions_path, f"oof_cat_feats{len(features)}_cv{str(score).split('.')[1][:6]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
 
-
-
-
-
-
-
+    # sub_cat_feats120_cv931578_spl5_seed202109 # 0.931755

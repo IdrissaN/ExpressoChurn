@@ -6,6 +6,9 @@ from functools import reduce
 from src.config import Config
 from src.utils import *
 
+import warnings
+warnings.filterwarnings("ignore")
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mean_feats', help='1 if include mean features and 0 otherwise', type=bool, default=0)
@@ -131,6 +134,7 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
     df['N_MISSING'] = df[test_feats].isna().sum(axis=1)
     df['AVG_MISSING_OP'] = df[['ON_NET', 'ORANGE', 'TIGO']].isna().sum(axis=1) / 3
     df['SUM_OPERATORS'] = df[['ON_NET', 'ORANGE', 'TIGO']].sum(axis=1)
+    df['TS_ON_NET'] = df['ON_NET'] / df['SUM_OPERATORS']
 
     df['LOG_ARPU_SEGMENT'] = np.log1p(df['ARPU_SEGMENT'])
     df['LOG_DATA_VOLUME'] = np.log1p(df['DATA_VOLUME'])
@@ -198,6 +202,7 @@ if __name__=='__main__':
     z = gc.collect()
     
     df = all_data.copy()
+
     df = compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper)
     
     for agg_col in ['REGION', 'TENURE', 'TOP_PACK', 'UNLIMITED_CALL']:
@@ -251,5 +256,5 @@ if __name__=='__main__':
     
     X_train['CHURN'] = y
     
-    X_train.to_csv(os.path.join(cfg.PATH, 'Train_FE.csv'), index=False)
-    X_test.to_csv(os.path.join(cfg.PATH, 'Test_FE.csv'), index=False)
+    X_train.to_csv(os.path.join(cfg.PATH, 'Train_FE_v2.csv'), index=False)
+    X_test.to_csv(os.path.join(cfg.PATH, 'Test_FE_v2.csv'), index=False)

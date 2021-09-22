@@ -41,18 +41,22 @@ def train_model(train, test, features, target, n_splits, seed):
         trn_x, trn_y = trn[features], y.iloc[trn_idx]
         val_x, val_y = val[features], y.iloc[val_idx]
 
+        optuna_params = {'n_estimators': 6118, 
+                        'boosting': 'gbdt', 
+                        'max_depth': 10, 
+                        'num_leaves': 120, 
+                        'learning_rate': 0.005532765646394192, 
+                        'subsample': 0.672239781204874, 
+                        'colsample_bytree': 0.6677733000135537, 
+                        'max_bin': 285, 
+                        'reg_lambda': 1.587587255617028, 
+                        'reg_alpha': 15.584931117199323,
+                        'metric': 'auc',
+                        'n_jobs': 16,
+                        'random_state': 278}
+
     
-        clf = LGBMClassifier(
-                n_estimators=8000,
-                learning_rate=0.03,
-                metric='auc',
-                reg_alpha=0.85,
-                reg_lambda=0.15,
-                min_child_weight=9.75,
-                colsample_bytree=0.5,
-                n_jobs = 16,
-                random_state = fold * 455 + 1
-                )
+        clf = LGBMClassifier(**optuna_params)
     
         clf.fit(trn_x, trn_y, 
                 eval_set= [(trn_x, trn_y), (val_x, val_y)], 
@@ -90,7 +94,7 @@ if __name__=='__main__':
     #excluded_feats.extend(cfg.MEAN_FEATS)
     #excluded_feats.extend(cfg.DIFF_MEAN_FEATS)
     excluded_feats.extend(cfg.DIFF_QRTLS_FEATS)
-    excluded_feats.extend(cfg.LOG_FEATS)
+    #excluded_feats.extend(cfg.LOG_FEATS)
 
     features = [col for col in train.columns if col not in excluded_feats]
     print(f"# features : {len(features)}")
@@ -99,8 +103,8 @@ if __name__=='__main__':
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
     oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_lgb_feats{len(features)}_cv{str(score).split('.')[1][:5]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_lgb_feats{len(features)}_cv{str(score).split('.')[1][:5]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_lgb_feats{len(features)}_cv{str(score).split('.')[1][:5]}_spl{args.n_splits}_seed{args.seed}_v2.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_lgb_feats{len(features)}_cv{str(score).split('.')[1][:5]}_spl{args.n_splits}_seed{args.seed}_v2.csv"), index=False)
 
 
 

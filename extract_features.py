@@ -18,42 +18,6 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def rename(newname):
-    def decorator(f):
-        f.__name__ = newname
-        return f
-    return decorator
-
-def q_at(y):
-    @rename(f'Q{y:.2f}')
-    def q(x):
-        return x.quantile(y)
-    return q
-
-def compute_quantile_feats_categ(data, agg_col, cont_col):
-    qf = {cont_col: [q_at(0.25), q_at(0.75)]}
-    df_quartiles = data.groupby(agg_col).agg(qf).reset_index()
-    df_quartiles.columns = [agg_col, f'{agg_col}_{cont_col}_Q1', f'{agg_col}_{cont_col}_Q3']
-    return df_quartiles
-
-def agg_quantile_feats_categ(data, agg_col):
-
-    quartiles_on_net = compute_quantile_feats_categ(df, agg_col, 'ON_NET')
-    quartiles_mt = compute_quantile_feats_categ(df, agg_col, 'MONTANT')
-    quartiles_orange = compute_quantile_feats_categ(df, agg_col, 'ORANGE')
-    quartiles_tigo = compute_quantile_feats_categ(df, agg_col, 'TIGO')
-    quartiles_regul = compute_quantile_feats_categ(df, agg_col, 'REGULARITY')
-    quartiles_freq_top = compute_quantile_feats_categ(df, agg_col, 'FREQ_TOP_PACK')
-    quartiles_freq_rech = compute_quantile_feats_categ(df, agg_col, 'FREQUENCE_RECH')
-    quartiles_freq = compute_quantile_feats_categ(df, agg_col, 'FREQUENCE')
-    quartiles_dv = compute_quantile_feats_categ(df, agg_col, 'DATA_VOLUME')
-
-    list_quartiles_dfs = [quartiles_on_net, quartiles_mt, quartiles_orange, quartiles_tigo, \
-                          quartiles_regul, quartiles_freq_top, quartiles_freq_rech, quartiles_freq, quartiles_dv]
-    
-    dfs_quartiles = reduce(lambda  left, right: pd.merge(left, right, on=[agg_col], how='outer'), list_quartiles_dfs)
-    return dfs_quartiles
-
 def compute_mean_feats_categ(data, categ_col):
     temp_dv = data.groupby(categ_col)['DATA_VOLUME'].agg(['mean']).rename({'mean':f'DATA_VOLUME_{categ_col}_MEAN'},axis=1).reset_index()
     temp_fr = data.groupby(categ_col)['FREQUENCE_RECH'].agg(['mean']).rename({'mean':f'FREQUENCE_RECH_{categ_col}_MEAN'},axis=1).reset_index()
@@ -86,46 +50,6 @@ def compute_diff_feats_to_mean(data, categ_col):
     data[f'DIFF_TIGO_MEAN_{categ_col}'] = data['TIGO'] - data[f'TIGO_{categ_col}_MEAN']
     data[f'DIFF_FREQ_TOP_PACK_MEAN_{categ_col}'] = data['FREQ_TOP_PACK'] - data[f'FREQ_TOP_PACK_{categ_col}_MEAN']
     
-    #data.drop([f'DATA_VOLUME_{categ_col}_MEAN', f'FREQUENCE_RECH_{categ_col}_MEAN', f'ON_NET_{categ_col}_MEAN', f'MONTANT_{categ_col}_MEAN', \
-     #         f'REVENUE_{categ_col}_MEAN', f'FREQ_{categ_col}_MEAN', f'REG_{categ_col}_MEAN', f'ORANGE_{categ_col}_MEAN', \
-      #        f'TIGO_{categ_col}_MEAN', f'FREQ_TOP_PACK_{categ_col}_MEAN'], axis=1, inplace=True)
-    
-    return data
-
-def compute_diff_feats_to_quartiles(data, categ_col):
-    data[f'DIFF_ON_NET_Q1_{categ_col}'] = data['ON_NET'] - data[f'{categ_col}_ON_NET_Q1']
-    data[f'DIFF_ON_NET_Q3_{categ_col}'] = data['ON_NET'] - data[f'{categ_col}_ON_NET_Q3']
-    
-    data[f'DIFF_MONTANT_Q1_{categ_col}'] = data['MONTANT'] - data[f'{categ_col}_MONTANT_Q1']
-    data[f'DIFF_MONTANT_Q3_{categ_col}'] = data['MONTANT'] - data[f'{categ_col}_MONTANT_Q3']
-    
-    data[f'DIFF_ORANGE_Q1_{categ_col}'] = data['ORANGE'] - data[f'{categ_col}_ORANGE_Q1']
-    data[f'DIFF_ORANGE_Q3_{categ_col}'] = data['ORANGE'] - data[f'{categ_col}_ORANGE_Q3']
-    
-    data[f'DIFF_TIGO_Q1_{categ_col}'] = data['TIGO'] - data[f'{categ_col}_TIGO_Q1']
-    data[f'DIFF_TIGO_Q3_{categ_col}'] = data['TIGO'] - data[f'{categ_col}_TIGO_Q3']
-    
-    data[f'DIFF_REGULARITY_Q1_{categ_col}'] = data['REGULARITY'] - data[f'{categ_col}_REGULARITY_Q1']
-    data[f'DIFF_REGULARITY_Q3_{categ_col}'] = data['REGULARITY'] - data[f'{categ_col}_REGULARITY_Q3']
-    
-    data[f'DIFF_FREQ_TOP_PACK_Q1_{categ_col}'] = data['FREQ_TOP_PACK'] - data[f'{categ_col}_FREQ_TOP_PACK_Q1']
-    data[f'DIFF_FREQ_TOP_PACK_Q3_{categ_col}'] = data['FREQ_TOP_PACK'] - data[f'{categ_col}_FREQ_TOP_PACK_Q3']
-    
-    data[f'DIFF_FREQUENCE_RECH_Q1_{categ_col}'] = data['FREQUENCE_RECH'] - data[f'{categ_col}_FREQUENCE_RECH_Q1']
-    data[f'DIFF_FREQUENCE_RECH_Q3_{categ_col}'] = data['FREQUENCE_RECH'] - data[f'{categ_col}_FREQUENCE_RECH_Q3']
-    
-    data[f'DIFF_FREQUENCE_Q1_{categ_col}'] = data['FREQUENCE'] - data[f'{categ_col}_FREQUENCE_Q1']
-    data[f'DIFF_FREQUENCE_Q3_{categ_col}'] = data['FREQUENCE'] - data[f'{categ_col}_FREQUENCE_Q3']
-    
-    data[f'DIFF_DATA_VOLUME_Q1_{categ_col}'] = data['DATA_VOLUME'] - data[f'{categ_col}_DATA_VOLUME_Q1']
-    data[f'DIFF_DATA_VOLUME_Q3_{categ_col}'] = data['DATA_VOLUME'] - data[f'{categ_col}_DATA_VOLUME_Q3']
-    
-    data.drop([f'{categ_col}_ON_NET_Q1', f'{categ_col}_ON_NET_Q3', f'{categ_col}_MONTANT_Q1', f'{categ_col}_MONTANT_Q3', \
-              f'{categ_col}_ORANGE_Q1', f'{categ_col}_ORANGE_Q3', f'{categ_col}_TIGO_Q1', f'{categ_col}_TIGO_Q3', \
-              f'{categ_col}_REGULARITY_Q1', f'{categ_col}_REGULARITY_Q3', f'{categ_col}_FREQ_TOP_PACK_Q1', f'{categ_col}_FREQ_TOP_PACK_Q3', \
-              f'{categ_col}_FREQUENCE_RECH_Q1', f'{categ_col}_FREQUENCE_RECH_Q3', f'{categ_col}_FREQUENCE_Q1', \
-              f'{categ_col}_FREQUENCE_Q3', f'{categ_col}_DATA_VOLUME_Q1', f'{categ_col}_DATA_VOLUME_Q3'], axis=1, inplace=True)
-    
     return data
 
 
@@ -156,7 +80,11 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
     df['TENURE_REGULARITY'] = df['MIN_TENURE'] * df['REGULARITY']
     df['ACTIVE_REG'] =  df['MIN_TENURE'] / df['REGULARITY']
     df['DATA_VOLUME_PER_REG'] =  df['DATA_VOLUME'] / df['REGULARITY']
-    df['INCOME_PER_REVENUE'] = df['ARPU_SEGMENT'] / df['REVENUE']
+    df['DATA_VOLUME_REGULARITY'] =  df['DATA_VOLUME'] * df['REGULARITY']
+    df['FRE_RECH_REGULARITY'] =  df['FREQUENCE_RECH'] * df['REGULARITY']
+    df['ON_NET_REGULARITY'] =  df['ON_NET'] * df['REGULARITY']
+    df['ORANGE_REGULARITY'] =  df['ORANGE'] * df['REGULARITY']
+    df['TIGO_REGULARITY'] =  df['TIGO'] * df['REGULARITY']
     
     return df
 
@@ -211,10 +139,6 @@ if __name__=='__main__':
         df = compute_diff_feats_to_mean(df, agg_col)
         del tmp_dfs_merged
 
-    dfs_tenure_quartiles = agg_quantile_feats_categ(df, 'TENURE')
-    df = pd.merge(df, dfs_tenure_quartiles, on='TENURE', how='left')
-    df = compute_diff_feats_to_quartiles(df, 'TENURE')
-
     z = gc.collect()
 
     train = df[:len_train]
@@ -250,11 +174,12 @@ if __name__=='__main__':
         encode_LE(nm)
         
     encode_FE(X_train, X_test, ['REGION','TENURE','TOP_PACK', 'CD_TENURE'])
+    encode_LE('REGION')
     encode_CB('REGION','TOP_PACK')
     encode_CB('REGION','TENURE')
     encode_CB('TENURE','TOP_PACK')
     
     X_train['CHURN'] = y
     
-    X_train.to_csv(os.path.join(cfg.PATH, 'Train_FE_v2.csv'), index=False)
-    X_test.to_csv(os.path.join(cfg.PATH, 'Test_FE_v2.csv'), index=False)
+    X_train.to_csv(os.path.join(cfg.PATH, 'Train_FE_noq_v3.csv'), index=False)
+    X_test.to_csv(os.path.join(cfg.PATH, 'Test_FE_noq_v3.csv'), index=False)

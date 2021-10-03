@@ -9,14 +9,31 @@ from src.utils import *
 import warnings
 warnings.filterwarnings("ignore")
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--mean_feats', help='1 if include mean features and 0 otherwise', type=bool, default=0)
-    parser.add_argument('--diff_feats', help='1 if include difference features and 0 otherwise', type=bool, default=1)
-    parser.add_argument('--log_feats', help='1 if include log features and 0 otherwise', type=bool, default=1)
-    parser.add_argument('--quartiles_feats', help='1 if include quartiles features and 0 otherwise', type=bool, default=1)
-    args = parser.parse_args()
-    return args
+# FREQUENCE ENCODE
+def encode_FE(df1, df2, cols):
+    for col in cols:
+        df = pd.concat([df1[col],df2[col]])
+        vc = df.value_counts(dropna=True, normalize=True).to_dict()
+        vc[-1] = -1
+        nm = col+'_FE'
+        df1[nm] = df1[col].map(vc)
+        df1[nm] = df1[nm].astype('float32')
+        df2[nm] = df2[col].map(vc)
+        df2[nm] = df2[nm].astype('float32')
+
+# LABEL ENCODE
+def encode_LE(col, train, test):
+    df_comb = pd.concat([train[col],test[col]],axis=0)
+    df_comb,_ = df_comb.factorize(sort=True)
+    nm = col
+    train[nm] = df_comb[:len(train)].astype('int32')
+    test[nm] = df_comb[len(train):].astype('int32')
+
+def encode_CB(col1, col2, df1, df2):
+    nm = col1+'_'+col2
+    df1[nm] = df1[col1].astype(str)+'_'+df1[col2].astype(str)
+    df2[nm] = df2[col1].astype(str)+'_'+df2[col2].astype(str) 
+    encode_LE(nm, df1, df2)
 
 def compute_mean_feats_categ(data, categ_col):
     temp_dv = data.groupby(categ_col)['DATA_VOLUME'].agg(['mean']).rename({'mean':f'DATA_VOLUME_{categ_col}_MEAN'},axis=1).reset_index()
@@ -59,8 +76,8 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
     df['AVG_MISSING_OP'] = df[['ON_NET', 'ORANGE', 'TIGO']].isna().sum(axis=1) / 3
     df['SUM_OPERATORS'] = df[['ON_NET', 'ORANGE', 'TIGO']].sum(axis=1)
     df['TS_ON_NET'] = df['ON_NET'] / df['SUM_OPERATORS']
+    df['TS_ORANGE'] = df['ORANGE'] / df['SUM_OPERATORS']
 
-    df['LOG_ARPU_SEGMENT'] = np.log1p(df['ARPU_SEGMENT'])
     df['LOG_DATA_VOLUME'] = np.log1p(df['DATA_VOLUME'])
     df['LOG_REVENUE'] = np.log1p(df['REVENUE'])
     df['LOG_MONTANT'] = np.log1p(df['MONTANT'])
@@ -85,6 +102,10 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
     df['ON_NET_REGULARITY'] =  df['ON_NET'] * df['REGULARITY']
     df['ORANGE_REGULARITY'] =  df['ORANGE'] * df['REGULARITY']
     df['TIGO_REGULARITY'] =  df['TIGO'] * df['REGULARITY']
+
+    num_bins = int(np.floor(1 + np.log2(len(df))))
+    df.loc[:, "REGULARITY_BIN"] = pd.cut(df["REGULARITY"], bins=num_bins, labels=False)
+    df['REGION_TENURE'] = df['REGION'].astype(str)+'_'+df['CD_TENURE'].astype(str)
     
     return df
 
@@ -92,24 +113,24 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
 if __name__=='__main__':
     
     tenure_categ_mapper = {
-      "K > 24 month": "K", 
-      "I 18-21 month": "I", 
-      "G 12-15 month": "G", 
-      "H 15-18 month": "H", 
-      "J 21-24 month": "J", 
-      "F 9-12 month": "F", 
-      "D 3-6 month": "D", 
-      "E 6-9 month": "E"}
+                        "K > 24 month": "K", 
+                        "I 18-21 month": "I", 
+                        "G 12-15 month": "G", 
+                        "H 15-18 month": "H", 
+                        "J 21-24 month": "J", 
+                        "F 9-12 month": "F", 
+                        "D 3-6 month": "D", 
+                        "E 6-9 month": "E"}
 
     tenure_int_mapper = {
-      "K > 24 month": 24, 
-      "I 18-21 month": 18, 
-      "G 12-15 month": 12, 
-      "H 15-18 month": 15, 
-      "J 21-24 month": 21, 
-      "F 9-12 month": 9, 
-      "D 3-6 month": 3, 
-      "E 6-9 month": 6}
+                        "K > 24 month": 24, 
+                        "I 18-21 month": 18, 
+                        "G 12-15 month": 12, 
+                        "H 15-18 month": 15, 
+                        "J 21-24 month": 21, 
+                        "F 9-12 month": 9, 
+                        "D 3-6 month": 3, 
+                        "E 6-9 month": 6}
     
     cfg = Config()
 
@@ -133,7 +154,7 @@ if __name__=='__main__':
 
     df = compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper)
     
-    for agg_col in ['REGION', 'TENURE', 'TOP_PACK', 'UNLIMITED_CALL']:
+    for agg_col in ['REGION', 'CD_TENURE', 'TOP_PACK', 'UNLIMITED_CALL', 'REGULARITY_BIN', 'REGION_TENURE']:
         tmp_dfs_merged = compute_mean_feats_categ(df, categ_col=agg_col)
         df = pd.merge(df, tmp_dfs_merged, on=agg_col, how='left')
         df = compute_diff_feats_to_mean(df, agg_col)
@@ -146,40 +167,14 @@ if __name__=='__main__':
 
     X_train = train.copy()
     X_test = test.copy()
-
-    # FREQUENCE ENCODE
-    def encode_FE(df1, df2, cols):
-        for col in cols:
-            df = pd.concat([df1[col],df2[col]])
-            vc = df.value_counts(dropna=True, normalize=True).to_dict()
-            vc[-1] = -1
-            nm = col+'_FE'
-            df1[nm] = df1[col].map(vc)
-            df1[nm] = df1[nm].astype('float32')
-            df2[nm] = df2[col].map(vc)
-            df2[nm] = df2[nm].astype('float32')
-
-    # LABEL ENCODE
-    def encode_LE(col, train=X_train, test=X_test):
-        df_comb = pd.concat([train[col],test[col]],axis=0)
-        df_comb,_ = df_comb.factorize(sort=True)
-        nm = col
-        train[nm] = df_comb[:len(train)].astype('int32')
-        test[nm] = df_comb[len(train):].astype('int32')
-
-    def encode_CB(col1, col2, df1=X_train, df2=X_test):
-        nm = col1+'_'+col2
-        df1[nm] = df1[col1].astype(str)+'_'+df1[col2].astype(str)
-        df2[nm] = df2[col1].astype(str)+'_'+df2[col2].astype(str) 
-        encode_LE(nm)
         
     encode_FE(X_train, X_test, ['REGION','TENURE','TOP_PACK', 'CD_TENURE'])
-    encode_LE('REGION')
-    encode_CB('REGION','TOP_PACK')
-    encode_CB('REGION','TENURE')
-    encode_CB('TENURE','TOP_PACK')
+    encode_LE('REGION',  X_train, X_test)
+    encode_CB('REGION','TOP_PACK', X_train, X_test)
+    encode_CB('REGION','CD_TENURE',  X_train, X_test)
+    encode_CB('TENURE','TOP_PACK',  X_train, X_test)
     
     X_train['CHURN'] = y
-    
-    X_train.to_csv(os.path.join(cfg.PATH, 'Train_FE_noq_v3.csv'), index=False)
-    X_test.to_csv(os.path.join(cfg.PATH, 'Test_FE_noq_v3.csv'), index=False)
+
+    X_train.to_csv(os.path.join(cfg.PATH, 'Train_meta.csv'), index=False)
+    X_test.to_csv(os.path.join(cfg.PATH, 'Test_meta.csv'), index=False)

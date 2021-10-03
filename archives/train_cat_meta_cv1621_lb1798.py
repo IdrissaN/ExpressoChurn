@@ -22,13 +22,12 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def train_model(train, test, features, target, n_splits, seed):
+def train_model(train, test, features, cat_cols, target, n_splits, seed):
     """
     Train a Cross-validation model, save oofs and predictions
     """
     oofs = np.zeros(train.shape[0])
     preds = np.zeros(test.shape[0])
-    models = []
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=args.shuffle, random_state=seed)
 
@@ -40,21 +39,27 @@ def train_model(train, test, features, target, n_splits, seed):
         trn_x, trn_y = trn[features], y.iloc[trn_idx]
         val_x, val_y = val[features], y.iloc[val_idx]
 
-        optuna_params = {'iterations': 6718, 'objective': 'CrossEntropy', 
+        best_params = {'iterations': 6718, 
+                        'objective': 'CrossEntropy', 
                         'bootstrap_type': 'Bernoulli', 
-                        'od_wait': 1707, 'learning_rate': 0.024588519860423364, 
-                        'reg_lambda': 93.4261912765013, 'random_strength': 29.233923330805222, 
-                        'depth': 9, 'min_data_in_leaf': 23, 'leaf_estimation_iterations': 13, 
-                        'subsample': 0.8143597084184464,
+                        'od_wait': 1707, 
+                        'learning_rate': 0.02, 
+                        'reg_lambda': 93.42, 
+                        'random_strength': 29.23, 
+                        'depth': 9, 
+                        'min_data_in_leaf': 23, 
+                        'leaf_estimation_iterations': 13, 
+                        'subsample': 0.81,
                         'eval_metric': 'AUC',
                         'task_type': 'GPU',
                         'random_seed': 202109
                         }
     
-        clf = CatBoostClassifier(**optuna_params)
+        clf = CatBoostClassifier(**best_params)
     
         clf.fit(trn_x, trn_y, 
-                eval_set= (val_x, val_y), 
+                eval_set= (val_x, val_y),
+                cat_features=cat_cols,
                 verbose=500, 
                 early_stopping_rounds=150)
         
@@ -82,17 +87,24 @@ if __name__=='__main__':
 
     y = train.CHURN
 
-    excluded_feats = ['CHURN', 'user_id', 'REGION', 'TENURE', 'CD_TENURE', 'MRG', 'TOP_PACK']
+    excluded_feats = ['CHURN', 'user_id', 'TENURE', 'CD_TENURE', 'MRG', 'TOP_PACK', 'ARPU_SEGMENT', 'REGULARITY_BIN', 'REGION_TENURE']
     excluded_feats.extend(cfg.DIFF_QRTLS_FEATS)
 
     features = [col for col in test.columns if col not in excluded_feats]
+
+    for df in [train, test]:
+        df['REGION'] = df['REGION'].fillna('UNKNOWN').astype('object')
+
+    cat_cols = train[features].select_dtypes('object').columns.tolist()
+    print(cat_cols)
+
     print(f"# features : {len(features)}")
-    oofs, preds, score = train_model(train, test, features, y, args.n_splits, args.seed)
+    oofs, preds, score = train_model(train, test, features, cat_cols, y, args.n_splits, args.seed)
 
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
     oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_cat_feats{len(features)}_cv{str(score).split('.')[1][:6]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_cat_feats{len(features)}_cv{str(score).split('.')[1][:6]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_cat_feats{len(features)}_cv{str(score).split('.')[1][:6]}_spl{args.n_splits}_seed{args.seed}_meta.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_cat_feats{len(features)}_cv{str(score).split('.')[1][:6]}_spl{args.n_splits}_seed{args.seed}_meta.csv"), index=False)
 
     # sub_cat_feats120_cv931578_spl5_seed202109 # 0.931755

@@ -18,6 +18,40 @@ def get_args():
     args = parser.parse_args()
     return args
 
+    
+def rename(newname):
+    def decorator(f):
+        f.__name__ = newname
+        return f
+    return decorator
+
+def q_at(y):
+    @rename(f'Q{y:.2f}')
+    def q(x):
+        return x.quantile(y)
+    return q
+
+def compute_quantile_feats_categ(data, agg_col, cont_col):
+    qf = {cont_col: [q_at(0.25), q_at(0.75)]}
+    df_quartiles = data.groupby(agg_col).agg(qf).reset_index()
+    df_quartiles.columns = [agg_col, f'{agg_col}_{cont_col}_Q1', f'{agg_col}_{cont_col}_Q3']
+    return df_quartiles
+
+def agg_quantile_feats_categ(data, agg_col):
+    quartiles_on_net = compute_quantile_feats_categ(df, agg_col, 'ON_NET')
+    quartiles_mt = compute_quantile_feats_categ(df, agg_col, 'MONTANT')
+    quartiles_orange = compute_quantile_feats_categ(df, agg_col, 'ORANGE')
+    quartiles_tigo = compute_quantile_feats_categ(df, agg_col, 'TIGO')
+    quartiles_regul = compute_quantile_feats_categ(df, agg_col, 'REGULARITY')
+    quartiles_freq_top = compute_quantile_feats_categ(df, agg_col, 'FREQ_TOP_PACK')
+    quartiles_freq_rech = compute_quantile_feats_categ(df, agg_col, 'FREQUENCE_RECH')
+    quartiles_freq = compute_quantile_feats_categ(df, agg_col, 'FREQUENCE')
+    quartiles_dv = compute_quantile_feats_categ(df, agg_col, 'DATA_VOLUME')
+    list_quartiles_dfs = [quartiles_on_net, quartiles_mt, quartiles_orange, quartiles_tigo, \
+                          quartiles_regul, quartiles_freq_top, quartiles_freq_rech, quartiles_freq, quartiles_dv]
+    
+    dfs_quartiles = reduce(lambda  left, right: pd.merge(left, right, on=[agg_col], how='outer'), list_quartiles_dfs)
+    return dfs_quartiles
 def compute_mean_feats_categ(data, categ_col):
     temp_dv = data.groupby(categ_col)['DATA_VOLUME'].agg(['mean']).rename({'mean':f'DATA_VOLUME_{categ_col}_MEAN'},axis=1).reset_index()
     temp_fr = data.groupby(categ_col)['FREQUENCE_RECH'].agg(['mean']).rename({'mean':f'FREQUENCE_RECH_{categ_col}_MEAN'},axis=1).reset_index()
@@ -37,7 +71,6 @@ def compute_mean_feats_categ(data, categ_col):
         del temp
     
     return dfs_merged
-
 def compute_diff_feats_to_mean(data, categ_col):
     data[f'DIFF_DV_MEAN_{categ_col}'] = data['DATA_VOLUME'] - data[f'DATA_VOLUME_{categ_col}_MEAN']
     data[f'DIFF_FR_MEAN_{categ_col}'] = data['FREQUENCE_RECH'] - data[f'FREQUENCE_RECH_{categ_col}_MEAN']
@@ -52,9 +85,43 @@ def compute_diff_feats_to_mean(data, categ_col):
     
     return data
 
+def compute_diff_feats_to_quartiles(data, categ_col):
+    data[f'DIFF_ON_NET_Q1_{categ_col}'] = data['ON_NET'] - data[f'{categ_col}_ON_NET_Q1']
+    data[f'DIFF_ON_NET_Q3_{categ_col}'] = data['ON_NET'] - data[f'{categ_col}_ON_NET_Q3']
+    
+    data[f'DIFF_MONTANT_Q1_{categ_col}'] = data['MONTANT'] - data[f'{categ_col}_MONTANT_Q1']
+    data[f'DIFF_MONTANT_Q3_{categ_col}'] = data['MONTANT'] - data[f'{categ_col}_MONTANT_Q3']
+    
+    data[f'DIFF_ORANGE_Q1_{categ_col}'] = data['ORANGE'] - data[f'{categ_col}_ORANGE_Q1']
+    data[f'DIFF_ORANGE_Q3_{categ_col}'] = data['ORANGE'] - data[f'{categ_col}_ORANGE_Q3']
+    
+    data[f'DIFF_TIGO_Q1_{categ_col}'] = data['TIGO'] - data[f'{categ_col}_TIGO_Q1']
+    data[f'DIFF_TIGO_Q3_{categ_col}'] = data['TIGO'] - data[f'{categ_col}_TIGO_Q3']
+    
+    data[f'DIFF_REGULARITY_Q1_{categ_col}'] = data['REGULARITY'] - data[f'{categ_col}_REGULARITY_Q1']
+    data[f'DIFF_REGULARITY_Q3_{categ_col}'] = data['REGULARITY'] - data[f'{categ_col}_REGULARITY_Q3']
+    
+    data[f'DIFF_FREQ_TOP_PACK_Q1_{categ_col}'] = data['FREQ_TOP_PACK'] - data[f'{categ_col}_FREQ_TOP_PACK_Q1']
+    data[f'DIFF_FREQ_TOP_PACK_Q3_{categ_col}'] = data['FREQ_TOP_PACK'] - data[f'{categ_col}_FREQ_TOP_PACK_Q3']
+    
+    data[f'DIFF_FREQUENCE_RECH_Q1_{categ_col}'] = data['FREQUENCE_RECH'] - data[f'{categ_col}_FREQUENCE_RECH_Q1']
+    data[f'DIFF_FREQUENCE_RECH_Q3_{categ_col}'] = data['FREQUENCE_RECH'] - data[f'{categ_col}_FREQUENCE_RECH_Q3']
+    
+    data[f'DIFF_FREQUENCE_Q1_{categ_col}'] = data['FREQUENCE'] - data[f'{categ_col}_FREQUENCE_Q1']
+    data[f'DIFF_FREQUENCE_Q3_{categ_col}'] = data['FREQUENCE'] - data[f'{categ_col}_FREQUENCE_Q3']
+    
+    data[f'DIFF_DATA_VOLUME_Q1_{categ_col}'] = data['DATA_VOLUME'] - data[f'{categ_col}_DATA_VOLUME_Q1']
+    data[f'DIFF_DATA_VOLUME_Q3_{categ_col}'] = data['DATA_VOLUME'] - data[f'{categ_col}_DATA_VOLUME_Q3']
+    
+    data.drop([f'{categ_col}_ON_NET_Q1', f'{categ_col}_ON_NET_Q3', f'{categ_col}_MONTANT_Q1', f'{categ_col}_MONTANT_Q3', \
+              f'{categ_col}_ORANGE_Q1', f'{categ_col}_ORANGE_Q3', f'{categ_col}_TIGO_Q1', f'{categ_col}_TIGO_Q3', \
+              f'{categ_col}_REGULARITY_Q1', f'{categ_col}_REGULARITY_Q3', f'{categ_col}_FREQ_TOP_PACK_Q1', f'{categ_col}_FREQ_TOP_PACK_Q3', \
+              f'{categ_col}_FREQUENCE_RECH_Q1', f'{categ_col}_FREQUENCE_RECH_Q3', f'{categ_col}_FREQUENCE_Q1', \
+              f'{categ_col}_FREQUENCE_Q3', f'{categ_col}_DATA_VOLUME_Q1', f'{categ_col}_DATA_VOLUME_Q3'], axis=1, inplace=True)
+    
+    return data
 
 def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
-
     df['N_MISSING'] = df[test_feats].isna().sum(axis=1)
     df['AVG_MISSING_OP'] = df[['ON_NET', 'ORANGE', 'TIGO']].isna().sum(axis=1) / 3
     df['SUM_OPERATORS'] = df[['ON_NET', 'ORANGE', 'TIGO']].sum(axis=1)
@@ -65,14 +132,13 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
     df['LOG_REVENUE'] = np.log1p(df['REVENUE'])
     df['LOG_MONTANT'] = np.log1p(df['MONTANT'])
 
-
     df['CD_TENURE'] = df['TENURE'].map(tenure_categ_mapper)
     df['AMOUNT_FREQ_RECH'] = df['MONTANT'] / df['FREQUENCE_RECH']
     df['RATIO_SPENT_RECH'] = df['MONTANT'] / (df['REVENUE'])
     df['RATIO_REGULARITY'] = df['REGULARITY'] / 90
     df['RATIO_DATA_VOLUME'] = df['DATA_VOLUME'] / 90
     df['UNLIMITED_CALL'] = df["TOP_PACK"].map(lambda x: 1 if "Unlimited" in str(x) else 0)
-
+    
     df['MIN_TENURE'] = df['TENURE'].map(tenure_int_mapper).astype(int)
     df['INCOME_PER_AMOUNT'] = df['REVENUE'] / df['MONTANT']
     df['INCOME_AFT_AMOUNT'] = df['REVENUE'] - df['MONTANT']
@@ -80,11 +146,7 @@ def compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper):
     df['TENURE_REGULARITY'] = df['MIN_TENURE'] * df['REGULARITY']
     df['ACTIVE_REG'] =  df['MIN_TENURE'] / df['REGULARITY']
     df['DATA_VOLUME_PER_REG'] =  df['DATA_VOLUME'] / df['REGULARITY']
-    df['DATA_VOLUME_REGULARITY'] =  df['DATA_VOLUME'] * df['REGULARITY']
-    df['FRE_RECH_REGULARITY'] =  df['FREQUENCE_RECH'] * df['REGULARITY']
-    df['ON_NET_REGULARITY'] =  df['ON_NET'] * df['REGULARITY']
-    df['ORANGE_REGULARITY'] =  df['ORANGE'] * df['REGULARITY']
-    df['TIGO_REGULARITY'] =  df['TIGO'] * df['REGULARITY']
+    df['INCOME_PER_REVENUE'] = df['ARPU_SEGMENT'] / df['REVENUE']
     
     return df
 
@@ -112,33 +174,32 @@ if __name__=='__main__':
       "E 6-9 month": 6}
     
     cfg = Config()
-
     train = pd.read_csv(os.path.join(cfg.PATH, 'Train.csv'))
     test = pd.read_csv(os.path.join(cfg.PATH, 'Test.csv'))
     sub = pd.read_csv(os.path.join(cfg.PATH, 'SampleSubmission.csv'))
-
     len_train = len(train)
     len_test = len(test)
-
     y = train['CHURN']
     test_feats = [col for col in test.columns]
     all_data = pd.concat([train[test_feats], test])
-
     for df in [train, test, all_data]:
         df = reduce_mem_usage(df)
         
     z = gc.collect()
-    
+
     df = all_data.copy()
 
     df = compute_feats(df, test_feats, tenure_categ_mapper, tenure_int_mapper)
-    
+
     for agg_col in ['REGION', 'TENURE', 'TOP_PACK', 'UNLIMITED_CALL']:
         tmp_dfs_merged = compute_mean_feats_categ(df, categ_col=agg_col)
         df = pd.merge(df, tmp_dfs_merged, on=agg_col, how='left')
         df = compute_diff_feats_to_mean(df, agg_col)
         del tmp_dfs_merged
 
+    dfs_tenure_quartiles = agg_quantile_feats_categ(df, 'TENURE')
+    df = pd.merge(df, dfs_tenure_quartiles, on='TENURE', how='left')
+    df = compute_diff_feats_to_quartiles(df, 'TENURE')
     z = gc.collect()
 
     train = df[:len_train]
@@ -166,7 +227,6 @@ if __name__=='__main__':
         nm = col
         train[nm] = df_comb[:len(train)].astype('int32')
         test[nm] = df_comb[len(train):].astype('int32')
-
     def encode_CB(col1, col2, df1=X_train, df2=X_test):
         nm = col1+'_'+col2
         df1[nm] = df1[col1].astype(str)+'_'+df1[col2].astype(str)
@@ -174,12 +234,12 @@ if __name__=='__main__':
         encode_LE(nm)
         
     encode_FE(X_train, X_test, ['REGION','TENURE','TOP_PACK', 'CD_TENURE'])
-    encode_LE('REGION')
     encode_CB('REGION','TOP_PACK')
     encode_CB('REGION','TENURE')
     encode_CB('TENURE','TOP_PACK')
-    
+
     X_train['CHURN'] = y
-    
-    X_train.to_csv(os.path.join(cfg.PATH, 'Train_FE_noq_v3.csv'), index=False)
-    X_test.to_csv(os.path.join(cfg.PATH, 'Test_FE_noq_v3.csv'), index=False)
+
+
+    X_train.to_pickle(os.path.join(cfg.PATH, 'Train_FE_v2.pkl'))
+    X_test.to_pickle(os.path.join(cfg.PATH, 'Test_FE_v2.pkl')) 

@@ -2,7 +2,7 @@ class Config:
     def __init__(self):
         self.PATH = "data"
         self.submissions_path = "submissions"
-        self.LOG_FEATS =      ['LOG_ARPU_SEGMENT', 'LOG_DATA_VOLUME', 'LOG_REVENUE', 'LOG_MONTANT']
+        self.LOG_FEATS =      ['LOG_DATA_VOLUME', 'LOG_REVENUE', 'LOG_MONTANT']
 
         self.MEAN_FEATS =     ['DATA_VOLUME_REGION_MEAN', 'FREQUENCE_RECH_REGION_MEAN', 'ON_NET_REGION_MEAN', 'MONTANT_REGION_MEAN', 'REVENUE_REGION_MEAN', 'FREQ_REGION_MEAN', 
                                'REG_REGION_MEAN', 'ORANGE_REGION_MEAN', 'TIGO_REGION_MEAN', 'FREQ_TOP_PACK_REGION_MEAN', 'DATA_VOLUME_TENURE_MEAN', 'FREQUENCE_RECH_TENURE_MEAN', 
@@ -23,8 +23,7 @@ class Config:
         self.DIFF_QRTLS_FEATS = ['DIFF_ON_NET_Q1_TENURE', 'DIFF_ON_NET_Q3_TENURE', 'DIFF_MONTANT_Q1_TENURE', 'DIFF_MONTANT_Q3_TENURE', 'DIFF_ORANGE_Q1_TENURE', 'DIFF_ORANGE_Q3_TENURE', 'DIFF_TIGO_Q1_TENURE', 'DIFF_TIGO_Q3_TENURE', 
                                  'DIFF_REGULARITY_Q1_TENURE', 'DIFF_REGULARITY_Q3_TENURE', 'DIFF_FREQ_TOP_PACK_Q1_TENURE', 'DIFF_FREQ_TOP_PACK_Q3_TENURE', 'DIFF_FREQUENCE_RECH_Q1_TENURE', 'DIFF_FREQUENCE_RECH_Q3_TENURE', 
                                  'DIFF_FREQUENCE_Q1_TENURE', 'DIFF_FREQUENCE_Q3_TENURE', 'DIFF_DATA_VOLUME_Q1_TENURE', 'DIFF_DATA_VOLUME_Q3_TENURE']
-        
-        
-# https://www.kaggle.com/davidedwards1/tabularmarch21-dae-starter-cv-inference/comments
-# python experiment.py --train_path data/Train_FE.csv --n_splits 5 --seed 56 --replace_na True --na_value -555
-# python train_xgb.py --train_path data/Train_FE.csv --test_path data/Test_FE.csv --n_splits 10 --seed 56 --shuffle True
+
+        self.NN_FEATS =         ['REGION', 'TENURE', 'TOP_PACK', 'REGION_TENURE', 'UNLIMITED_CALL', 'FORFAIT_24h', 'FORFAIT_5d', 'FORFAIT_7d',
+                                'TE_REGION', 'TE_TENURE', 'TE_TOP_PACK', 'TE_REGION_TENURE', 'TE_REGION_TOP_PACK', 'TE_TENURE_TOP_PACK', 'REGULARITY',
+                                'N_MISSING', 'N_MISSING_OP', 'N_MISSING_REV', 'N_MISSING_ZONE', 'N_MISSING_PACK', 'N_MISSING_FREQ_DT', 'N_MISSING_IDENTITY']

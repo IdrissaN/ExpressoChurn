@@ -3,12 +3,154 @@ import random
 import numpy as np
 import pandas as pd
 from numba import jit
+from scipy import special
+from scipy import optimize
+from copy import deepcopy
+from sklearn.model_selection import KFold
 
 
 def seed_everything(seed):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
+
+def rename(newname):
+    def decorator(f):
+        f.__name__ = newname
+        return f
+    return decorator
+
+def q_at(y):
+    @rename(f'Q{y:.2f}')
+    def q(x):
+        return x.quantile(y)
+    return q
+
+
+class bagging_classifier:
+
+    def __init__(self, base_estimator, n_estimators):
+
+        self.base_estimator_ = base_estimator
+        self.n_estimators_ = n_estimators
+
+    def fit(self, X, y, eval_set = None, categorical_feature = None, eval_metric = 'auc', verbose = 500, early_stopping_rounds = 100):
+        
+        self.estimators_ = []
+        self.feature_importances_gain_ = np.zeros(X.shape[1])
+        self.feature_importances_split_ = np.zeros(X.shape[1])
+        self.n_classes_ = y.nunique()
+
+        if self.n_estimators_ == 1:
+            print ('n_estimators=1, no downsampling')
+            estimator = deepcopy(self.base_estimator_)
+            estimator.fit(X, y, eval_set = [(X, y)] + eval_set,
+                eval_metric = eval_metric, verbose = verbose, 
+                early_stopping_rounds = early_stopping_rounds)
+            self.estimators_.append(estimator)
+            return
+
+        minority = y.value_counts().sort_values().index.values[0]
+        majority = y.value_counts().sort_values().index.values[1]
+
+        X_min = X.loc[y==minority]
+        y_min = y.loc[y==minority]
+        X_maj = X.loc[y==majority]
+        y_maj = y.loc[y==majority]
+
+        kf = KFold(self.n_estimators_, shuffle=True, random_state=92021)
+
+        for rest, this in kf.split(y_maj):
+    
+            print('Training on a subset')
+            X_maj_sub = X_maj.iloc[this]
+            y_maj_sub = y_maj.iloc[this]
+            X_sub = pd.concat([X_min, X_maj_sub])
+            y_sub = pd.concat([y_min, y_maj_sub])
+
+            estimator = deepcopy(self.base_estimator_)
+
+            estimator.fit(X_sub, y_sub, eval_set = [(X_sub, y_sub)] + eval_set,
+                eval_metric = eval_metric, verbose = verbose, 
+                early_stopping_rounds = early_stopping_rounds,
+                categorical_feature = categorical_feature)
+
+            self.estimators_.append(estimator)
+
+    def predict_proba(self, X):
+
+        n_samples = X.shape[0]
+        proba = np.zeros([n_samples, self.n_classes_])
+
+        for estimator in self.estimators_:
+            proba += estimator.predict_proba(X)/self.n_estimators_
+
+        return proba
+
+
+class FocalLoss:
+
+    # https://maxhalford.github.io/blog/lightgbm-focal-loss/
+
+    def __init__(self, gamma, alpha=None):
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def at(self, y):
+        if self.alpha is None:
+            return np.ones_like(y)
+        return np.where(y, self.alpha, 1 - self.alpha)
+
+    def pt(self, y, p):
+        p = np.clip(p, 1e-15, 1 - 1e-15)
+        return np.where(y, p, 1 - p)
+
+    def __call__(self, y_true, y_pred):
+        at = self.at(y_true)
+        pt = self.pt(y_true, y_pred)
+        return -at * (1 - pt) ** self.gamma * np.log(pt)
+
+    def grad(self, y_true, y_pred):
+        y = 2 * y_true - 1  # {0, 1} -> {-1, 1}
+        at = self.at(y_true)
+        pt = self.pt(y_true, y_pred)
+        g = self.gamma
+        return at * y * (1 - pt) ** g * (g * pt * np.log(pt) + pt - 1)
+
+    def hess(self, y_true, y_pred):
+        y = 2 * y_true - 1  # {0, 1} -> {-1, 1}
+        at = self.at(y_true)
+        pt = self.pt(y_true, y_pred)
+        g = self.gamma
+
+        u = at * y * (1 - pt) ** g
+        du = -at * y * g * (1 - pt) ** (g - 1)
+        v = g * pt * np.log(pt) + pt - 1
+        dv = g * np.log(pt) + g + 1
+
+        return (du * v + u * dv) * y * (pt * (1 - pt))
+
+    def init_score(self, y_true):
+        res = optimize.minimize_scalar(
+            lambda p: self(y_true, p).sum(),
+            bounds=(0, 1),
+            method='bounded'
+        )
+        p = res.x
+        log_odds = np.log(p / (1 - p))
+        return log_odds
+
+    def lgb_obj(self, preds, train_data):
+        y = train_data.get_label()
+        p = special.expit(preds)
+        return self.grad(y, p), self.hess(y, p)
+
+    def lgb_eval(self, preds, train_data):
+        y = train_data.get_label()
+        p = special.expit(preds)
+        is_higher_better = False
+        return 'focal_loss', self(y, p).mean(), is_higher_better
+
 
 @jit
 def fast_auc(y_true, y_prob):

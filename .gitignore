@@ -1,0 +1,9 @@
+submissions/*
+data/*
+archives/*
+*.ipynb
+src/__pycache__/*
+src/en*
+src/opt*
+catboost_info/*
+extract/*

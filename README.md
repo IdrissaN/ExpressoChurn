@@ -1,7 +1,7 @@
-The below command will create lot of features (mean per category, difference to mean, booleans and target encode somme categorical features)
+The below command will create lot of features (mean per category, difference to mean, booleans and target encoding)
 ```python
 python extract_feats_te.py
-``
+```
 xgboost : 10 folds cross validation using the above output dataset.
 
 ```python

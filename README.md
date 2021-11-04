@@ -1,9 +1,24 @@
+### How to run this code ?
+
+* Create a **data** folder and put the competition data
+* Create a **submissions** folder to store the submission files for each model.
+
+Here we go ! 
+
 The below command will create lot of features (mean per category, difference to mean, booleans and target encoding)
 ```python
 python extract_feats_te.py
 ```
-xgboost : 10 folds cross validation using the above output dataset.
+### Models
 
 ```python
-python train_xgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 10 --seed 56 --shuffle False
+python train_xgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 10 --seed 14 --shuffle False
 ```
+```python
+python train_lgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 5 --seed 26 --shuffle False
+```
+
+```python
+python train_cat.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 5 --seed 44 --shuffle True
+```
+**Note :** the models are using different sets of features for diversity.

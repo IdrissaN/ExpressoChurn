@@ -35,8 +35,8 @@ def train_model(train, test, features, target, n_splits, seed, cat_feats=None):
         
         trn, val = train.iloc[trn_idx], train.iloc[val_idx]
             
-        trn_x, trn_y = trn[features].fillna(-999), target.iloc[trn_idx]
-        val_x, val_y = val[features].fillna(-999), target.iloc[val_idx]
+        trn_x, trn_y = trn[features], target.iloc[trn_idx]
+        val_x, val_y = val[features], target.iloc[val_idx]
 
         best_params = {'n_estimators': 6118,  
                         'max_depth': 10, 
@@ -68,7 +68,7 @@ def train_model(train, test, features, target, n_splits, seed, cat_feats=None):
                             )
         
         oofs[val_idx] = special.expit(fl.init_score(trn_y) + lgb_model.predict(val_x))
-        preds += special.expit(fl.init_score(trn_y) + lgb_model.predict(test[features].fillna(-999))) / skf.n_splits
+        preds += special.expit(fl.init_score(trn_y) + lgb_model.predict(test[features])) / skf.n_splits
     
         print(f'Fold {fold + 1} ROC AUC Score : {eval_auc(val_y, oofs[val_idx])}')
         del trn, val
@@ -103,5 +103,5 @@ if __name__=='__main__':
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
     oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_fl_na_cs01.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_fl_na_cs01.csv"), index=False)
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_fl.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_fl.csv"), index=False)

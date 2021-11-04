@@ -3,11 +3,10 @@ import argparse
 import time, gc
 import pandas as pd
 import numpy as np
-import xgboost as xgb
+from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold
 from src.config import Config
 from src.utils import *
-from src.target_encoding import *
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -36,36 +35,36 @@ def train_model(train, test, features, target, n_splits, seed):
     for fold, (trn_idx, val_idx) in enumerate(skf.split(train, target)):
         print("\n Fold [{}/{}] - ".format(fold + 1, skf.n_splits), "started at ", time.ctime())
         print('=='*35)
-
-        fl = FocalLoss(alpha=None, gamma=0)
         
         trn, val = train.iloc[trn_idx], train.iloc[val_idx]       
-        trn_x, trn_y = trn[features].fillna(-999), y.iloc[trn_idx]
-        val_x, val_y = val[features].fillna(-999), y.iloc[val_idx]
-                
-        te_params = {
-                    #'n_estimators': 6747, 
-                    'max_depth': 8, 
-                    'learning_rate': 0.037483943745390796, 
-                    'subsample': 0.8223791003856742, 
-                    'colsample_bytree': 0.21861513850251216, 
-                    'max_bin': 130, 
-                    'reg_lambda': 4.5921618757053535, 
-                    'reg_alpha': 18.14882394157521,
-                    'seed':1202,
-                    'eval_metric': 'auc',
-                    'gpu_id': 0,
-                    'tree_method': 'gpu_hist'}
+        trn_x, trn_y = trn[features], y.iloc[trn_idx]
+        val_x, val_y = val[features], y.iloc[val_idx]
 
-        dtrain = xgb.DMatrix(trn_x.values, trn_y.values)
-        dvalid = xgb.DMatrix(val_x.values, val_y.values)
-
-        xgb_model = xgb.train(te_params, dtrain, 5000, evals=[(dtrain, "train"), (dvalid, "eval")],
-                                obj=fl.lgb_obj, 
-                                early_stopping_rounds=100, verbose_eval=500)
+        best_params = {'n_estimators': 2729, 
+                        'max_depth': 10, 
+                        'learning_rate': 0.01,
+                        'subsample': 0.8,
+                        'colsample_bytree': 0.7,
+                        'gamma': 0, 
+                        'reg_lambda': 1.22,
+                        'reg_alpha': 7.1,
+                        'max_bin': 335,
+                        'seed':1202,
+                        'eval_metric': 'auc',
+                        'gpu_id': 0,
+                        'tree_method': 'gpu_hist',
+                        }
+    
+        clf = XGBClassifier(**best_params)
+    
+        clf.fit(trn_x, trn_y, 
+                eval_set= [(trn_x, trn_y), (val_x, val_y)], 
+                eval_metric='auc', 
+                verbose=500, 
+                early_stopping_rounds=200)
         
-        oofs[val_idx] = special.expit(fl.init_score(trn_y) + xgb_model.predict(xgb.DMatrix(val_x.values)))
-        preds += special.expit(fl.init_score(trn_y) + xgb_model.predict(xgb.DMatrix(test[features].fillna(-999).values))) / skf.n_splits
+        oofs[val_idx] = clf.predict_proba(val_x)[:, 1]
+        preds += clf.predict_proba(test[features])[:, 1] / skf.n_splits
     
         print(f'Fold {fold + 1} ROC AUC Score : {eval_auc(val_y, oofs[val_idx])}')
         del trn, val
@@ -101,5 +100,5 @@ if __name__=='__main__':
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
     oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_fl_params_te_na.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_fl_params_te_na.csv"), index=False)
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te.csv"), index=False)

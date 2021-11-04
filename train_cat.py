@@ -7,7 +7,6 @@ from catboost import CatBoostClassifier
 from sklearn.model_selection import StratifiedKFold
 from src.config import Config
 from src.utils import *
-from src.target_encoding import *
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -44,7 +43,7 @@ def train_model(train, test, features, cat_cols, target, n_splits, seed):
                         'objective': 'CrossEntropy', 
                         'bootstrap_type': 'Bernoulli', 
                         'od_wait': 1707, 
-                        'learning_rate': 0.008, 
+                        'learning_rate': 0.02, 
                         'reg_lambda': 93.42, 
                         'random_strength': 29.23, 
                         'depth': 9, 
@@ -104,5 +103,5 @@ if __name__=='__main__':
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
     oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_cat_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_kmeans.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_cat_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_kmeans.csv"), index=False)
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_cat_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_cat_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te.csv"), index=False)

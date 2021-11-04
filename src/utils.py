@@ -7,12 +7,24 @@ from scipy import special
 from scipy import optimize
 from copy import deepcopy
 from sklearn.model_selection import KFold
+import torch
 
 
 def seed_everything(seed):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
+
+def seed_torch(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    
+    if torch.cuda.is_available(): 
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 def rename(newname):
     def decorator(f):
@@ -239,3 +251,63 @@ class TrainTestHelper(object):
             train = train_test.iloc[:self.ntrain, :].copy().reset_index(drop=True)
             test = train_test.iloc[self.ntrain:, :].copy().reset_index(drop=True)
         return train, test
+
+
+class AverageMeter:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+class EarlyStopping:
+    def __init__(self, patience=7, mode="max", delta=0.0001, verbose = None):
+        self.patience = patience
+        self.counter = 0
+        self.mode = mode
+        self.best_score = None
+        self.early_stop = False
+        self.delta = delta
+        self.verbose = verbose
+        if self.mode == "min":
+            self.val_score = np.Inf
+        else:
+            self.val_score = -np.Inf
+
+    def __call__(self, epoch_score, model, model_path):
+    
+        if self.mode == "min":
+            score = -1.0 * epoch_score
+        else:
+            score = np.copy(epoch_score)
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(epoch_score, model, model_path)
+        elif score < self.best_score: #  + self.delta
+            self.counter += 1
+            if self.verbose:
+                print('EarlyStopping counter: {} out of {}'.format(self.counter, self.patience))
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(epoch_score, model, model_path)
+            self.counter = 0
+
+    def save_checkpoint(self, epoch_score, model, model_path):
+        if epoch_score not in [-np.inf, np.inf, -np.nan, np.nan]:
+            if self.verbose:
+                print('Validation score improved ({:.4f} --> {:.4f}). Saving model!'.format(self.val_score, epoch_score))
+                
+            torch.save(model.state_dict(), model_path)
+        self.val_score = epoch_score

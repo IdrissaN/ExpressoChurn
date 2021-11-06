@@ -7,6 +7,7 @@ from catboost import CatBoostClassifier
 from sklearn.model_selection import StratifiedKFold
 from src.config import Config
 from src.utils import *
+from src.target_encoding import *
 
 import warnings
 warnings.filterwarnings("ignore")

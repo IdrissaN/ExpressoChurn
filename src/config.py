@@ -2,6 +2,13 @@ class Config:
     def __init__(self):
         self.PATH = "data"
         self.submissions_path = "submissions"
+        self.n_splits = 5
+        self.batch_size = 1024
+        self.epochs = 5
+        self.seed = 56
+        self.learning_rate = 1e-4
+        self.checkpoint = lambda fold: f'submissions/model_{fold}.pt'
+
         self.LOG_FEATS =      ['LOG_DATA_VOLUME', 'LOG_REVENUE', 'LOG_MONTANT']
 
         self.MEAN_FEATS =     ['DATA_VOLUME_REGION_MEAN', 'FREQUENCE_RECH_REGION_MEAN', 'ON_NET_REGION_MEAN', 'MONTANT_REGION_MEAN', 'REVENUE_REGION_MEAN', 'FREQ_REGION_MEAN', 

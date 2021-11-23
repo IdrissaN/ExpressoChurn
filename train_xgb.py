@@ -15,10 +15,10 @@ warnings.filterwarnings("ignore")
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path', help='path of Train', type=str, default='data/Train_meta.csv', required=True)
-    parser.add_argument('--test_path', help='path of Test', type=str, default='data/Test_meta.csv', required=True)
-    parser.add_argument('--seed', default=56, type=int)
-    parser.add_argument('--shuffle', default=False, type=bool)
+    parser.add_argument('--train_path', help='path of Train', type=str, default='data/Train_te.pkl', required=True)
+    parser.add_argument('--test_path', help='path of Test', type=str, default='data/Test_te.pkl', required=True)
+    parser.add_argument('--seed', default=26, type=int)
+    parser.add_argument('--shuffle', default=True, type=bool)
     parser.add_argument('--n_splits', default=5, type=int)
     args = parser.parse_args()
     return args
@@ -45,7 +45,7 @@ def train_model(train, test, features, target, n_splits, seed):
                         'max_depth': 10, 
                         'learning_rate': 0.01,
                         'subsample': 0.8,
-                        'colsample_bytree': 0.7,
+                        'colsample_bytree': 0.4,
                         'gamma': 0, 
                         'reg_lambda': 1.22,
                         'reg_alpha': 7.1,
@@ -99,7 +99,10 @@ if __name__=='__main__':
     oofs, preds, score = train_model(train, test, features, y, args.n_splits, args.seed)
 
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
-    oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
+    oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs}) 
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_cs7_te.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_cs7_te.csv"), index=False)
+    np.save(f"oof_xgb_{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}.npy", oof.to_numpy())
+    np.save(f"sub_xgb_{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}.npy", submission.to_numpy())
+
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_cs4_te.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_xgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_cs4_te.csv"), index=False)

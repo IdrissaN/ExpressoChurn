@@ -51,8 +51,8 @@ if __name__=='__main__':
 
     df = SUB_CSV[0].copy()
     df.CHURN = np.mean(pred_x_pow, axis=1)
-    df.to_csv(f'pow_avg_te__n_models_{len(SUB_CSV)}_pow_{args.power}.csv', index=False)
+    df.to_csv(f'pow_avg_te_n_models_{len(SUB_CSV)}_pow_{args.power}.csv', index=False)
 
     df = SUB_CSV[0].copy()
     df.CHURN = np.mean(pred_x_ens, axis=1)
-    df.to_csv(f'blend_te__n_models_{len(SUB_CSV)}.csv', index=False)
+    df.to_csv(f'blend_te_n_models_{len(SUB_CSV)}.csv', index=False)

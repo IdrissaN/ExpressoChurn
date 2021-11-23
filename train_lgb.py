@@ -16,7 +16,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path', help='path of Train', type=str, default='data/Train_te.pkl', required=True)
     parser.add_argument('--test_path', help='path of Test', type=str, default='data/Test_te.pkl', required=True)
-    parser.add_argument('--seed', default=128, type=int)
+    parser.add_argument('--seed', default=26, type=int)
     parser.add_argument('--shuffle', default=True, type=bool)
     parser.add_argument('--n_splits', default=5, type=int)
     args = parser.parse_args()
@@ -69,8 +69,10 @@ def train_model(train, test, features, target, n_splits, seed, cat_feats=None):
         
         oofs[val_idx] = special.expit(fl.init_score(trn_y) + lgb_model.predict(val_x))
         preds += special.expit(fl.init_score(trn_y) + lgb_model.predict(test[features].fillna(-999))) / skf.n_splits
-    
-        print(f'Fold {fold + 1} ROC AUC Score : {eval_auc(val_y, oofs[val_idx])}')
+
+        val_auc = eval_auc(val_y, oofs[val_idx])
+
+        print(f'Fold {fold + 1} ROC AUC Score : {val_auc}')
         del trn, val
         z = gc.collect()
     
@@ -103,5 +105,8 @@ if __name__=='__main__':
     submission = pd.DataFrame({'user_id': test.user_id, 'CHURN': preds})
     oof = pd.DataFrame({'user_id': train.user_id, 'CHURN': y, 'OOF': oofs})
 
-    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_fl_na_cs01.csv"), index=False)
-    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}_te_fl_na_cs01.csv"), index=False)
+    np.save(f"oof_lgb_{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}.npy", oof.to_numpy())
+    np.save(f"sub_lgb_{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}.npy", submission.to_numpy())
+
+    submission.to_csv(os.path.join(cfg.submissions_path, f"sub_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)
+    oof.to_csv(os.path.join(cfg.submissions_path, f"oof_lgb_feats{len(features)}_cv{str(score).split('.')[1][:7]}_spl{args.n_splits}_seed{args.seed}.csv"), index=False)

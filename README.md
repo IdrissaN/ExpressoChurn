@@ -12,13 +12,13 @@ python extract_feats_te.py
 ### Models
 
 ```python
-python train_xgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 10 --seed 14 --shuffle False
-```
-```python
-python train_lgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 5 --seed 26 --shuffle False
-```
-
-```python
-python train_cat.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl --n_splits 5 --seed 44 --shuffle True
+python train_xgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl
+python train_lgb.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl
+python train_cat.py --train_path data/Train_te.pkl --test_path data/Test_te.pkl
 ```
 **Note :** the models are using different sets of features for diversity.
+
+### Ensembling
+```python
+python power_average.py
+```

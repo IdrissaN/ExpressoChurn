@@ -16,9 +16,9 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path', help='path of Train', type=str, default='data/Train_te.pkl', required=True)
     parser.add_argument('--test_path', help='path of Test', type=str, default='data/Test_te.pkl', required=True)
-    parser.add_argument('--seed', default=26, type=int)
-    parser.add_argument('--shuffle', default=True, type=bool)
-    parser.add_argument('--n_splits', default=5, type=int)
+    parser.add_argument('--seed', default=14, type=int)
+    parser.add_argument('--shuffle', default=False, type=bool)
+    parser.add_argument('--n_splits', default=10, type=int)
     args = parser.parse_args()
     return args
 
@@ -93,7 +93,9 @@ if __name__=='__main__':
     y = train.CHURN
 
     excluded_feats = ['CHURN', 'user_id', 'REGION', 'TENURE', 'CD_TENURE', 'MRG', 'ZONE1', 'ZONE2',
-                     'TOP_PACK', 'ARPU_SEGMENT', 'REGULARITY_BIN', 'REGION_TENURE', 'REGION_TOP_PACK', 'TENURE_TOP_PACK']
+                     'TOP_PACK', 'ARPU_SEGMENT', 'REGULARITY_BIN', 'REGION_TENURE', 'REGION_TOP_PACK', 'TENURE_TOP_PACK',
+                     'TE_TOP_PACK', 'TE_REGION_TOP_PACK', 'TE_TENURE_TOP_PACK']
+    
     excluded_feats.extend(cfg.DIFF_QRTLS_FEATS)
 
     features = [col for col in train.columns if col not in excluded_feats]
